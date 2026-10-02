@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import type { ExplainResult } from "@/app/(workspace)/analyses/[id]/actions";
 import { railLabel } from "@/lib/roles";
+import { FileChat, type ChatState } from "./file-chat";
 import { ExplanationText } from "./explanation-text";
 import { RerunButton } from "./progress/rerun-button";
 
@@ -33,58 +34,77 @@ export function ExplanationPanel(props: {
   state: ExplanationState | undefined;
   freshness: Freshness | undefined;
   onExplain: (target: ExplainTarget) => void;
+  chat: ChatState | undefined;
+  onAsk: (target: ExplainTarget, question: string) => void;
   isPath: (path: string) => boolean;
   renderPath: (path: string) => ReactNode;
 }) {
   const { target, state } = props;
   const what = target.kind === "file" ? "this file" : "this folder";
+  const chat = (
+    <FileChat target={target} state={props.chat} onAsk={props.onAsk} isPath={props.isPath} renderPath={props.renderPath} />
+  );
 
   if (!state) {
     return (
-      <div className="px-3 py-3 text-[11px]">
-        <ExplainButton label="Explain" onClick={() => props.onExplain(target)} />
-        <p className="mt-1.5 text-fg-muted">
-          {target.kind === "file"
-            ? "Written by a model from this file's source and every file it imports or is imported by, as parsed."
-            : "Written by a model from what's in this folder and every import crossing into or out of it, as parsed."}
-        </p>
+      <div className="py-3 text-[11px]">
+        <div className="px-3">
+          <ExplainButton label="Explain" onClick={() => props.onExplain(target)} />
+          <p className="mt-1.5 text-fg-muted">
+            {target.kind === "file"
+              ? "Written by a model from this file's source and every file it imports or is imported by, as parsed."
+              : "Written by a model from what's in this folder and every import crossing into or out of it, as parsed."}
+          </p>
+        </div>
+        {chat}
       </div>
     );
   }
   if (state.status === "loading") {
-    return <p className="px-3 py-3 text-[11px] text-fg-muted">Explaining {what}…</p>;
+    return (
+      <div className="py-3">
+        <p className="px-3 text-[11px] text-fg-muted">Explaining {what}…</p>
+        {chat}
+      </div>
+    );
   }
   if (state.status === "error") {
     return (
-      <div className="px-3 py-3 text-[11px]">
-        <p>Couldn&apos;t explain {what}.</p>
-        <p className="mt-0.5 break-words text-fg-muted">{state.error}</p>
-        <div className="mt-2">
-          <ExplainButton label="Try again" onClick={() => props.onExplain(target)} />
+      <div className="py-3 text-[11px]">
+        <div className="px-3">
+          <p>Couldn&apos;t explain {what}.</p>
+          <p className="mt-0.5 break-words text-fg-muted">{state.error}</p>
+          <div className="mt-2">
+            <ExplainButton label="Try again" onClick={() => props.onExplain(target)} />
+          </div>
         </div>
+        {chat}
       </div>
     );
   }
 
   const { result } = state;
   return (
-    <div className="px-3 py-3">
-      <FreshnessNote freshness={props.freshness} target={target} analysisId={props.analysisId} commitSha={props.commitSha} />
-      <ExplanationText text={result.body} isPath={props.isPath} onPath={props.renderPath} />
-      <div className="mt-3 space-y-0.5 border-t border-line pt-2 text-[10px] text-fg-muted">
-        {result.labelled && (
+    <div className="py-3">
+      <div className="px-3">
+        <FreshnessNote freshness={props.freshness} target={target} analysisId={props.analysisId} commitSha={props.commitSha} />
+        <ExplanationText text={result.body} isPath={props.isPath} onPath={props.renderPath} />
+        <div className="mt-3 space-y-0.5 border-t border-line pt-2 text-[10px] text-fg-muted">
+          {result.labelled && (
+            <p>
+              {result.labelled.role === null
+                ? "No convention identified this file, and the model found no role that fits."
+                : `No convention identified this file; the model labelled it ${railLabel(result.labelled.role).toLowerCase()}.`}
+            </p>
+          )}
+          {result.labelError && <p>Labelling this file failed: {result.labelError}</p>}
           <p>
-            {result.labelled.role === null
-              ? "No convention identified this file, and the model found no role that fits."
-              : `No convention identified this file; the model labelled it ${railLabel(result.labelled.role).toLowerCase()}.`}
+            <span className="font-mono">{result.model}</span> · {result.cached ? "from cache, no model call" : "new answer"}
           </p>
-        )}
-        {result.labelError && <p>Labelling this file failed: {result.labelError}</p>}
-        <p>
-          <span className="font-mono">{result.model}</span> · {result.cached ? "from cache, no model call" : "new answer"}
-        </p>
-        <p>{result.tracing.on ? `Traced to LangSmith project ${result.tracing.project}` : `Not traced: ${result.tracing.reason}`}</p>
+          <p>{result.tracing.on ? `Traced to LangSmith project ${result.tracing.project}` : `Not traced: ${result.tracing.reason}`}</p>
+        </div>
       </div>
+      {chat}
     </div>
   );
 }

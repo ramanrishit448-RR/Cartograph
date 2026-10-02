@@ -52,6 +52,9 @@ export type ClassifyInput = {
   importedBy: { path: string; role: string | null }[];
 };
 
+/** Prior turns the model already wrote or was asked, in order. */
+export type ChatTurn = { role: "user" | "assistant"; content: string };
+
 // The pane is narrow: headings would cut a few short paragraphs into labelled
 // fragments. Forbidding formatting outright doesn't hold, so a small subset is
 // permitted and the pane renders exactly that subset.
@@ -76,6 +79,22 @@ ${HONESTY}
 ${FORMAT}`;
 
 export const CLASSIFY_SYSTEM = `You label one file of a TypeScript or JavaScript repository that no framework convention identified. Choose the single role that best describes it from: ${MODEL_ROLES.join(", ")}. Answer "none" if none of them clearly fits. Use its path, the names it exports, its source, and the roles of the files around it. Answer only with the JSON the schema asks for.`;
+
+export const CHAT_FILE_SYSTEM = `You answer questions about one file of a TypeScript or JavaScript repository. The developer is looking at that file on a map of parsed imports.
+
+You're given the file's source, and every file it imports and every file that imports it. Answer only the latest question, using prior turns for context. If the question can't be answered from what you were given, say so and say what's missing — don't guess a file or a connection.
+
+${HONESTY}
+
+${FORMAT}`;
+
+export const CHAT_FOLDER_SYSTEM = `You answer questions about one folder of a TypeScript or JavaScript repository. The developer is looking at that folder on a map of parsed imports.
+
+The facts are about the folder as a whole: the files in it, and the imports crossing into or out of it. Answer only the latest question, using prior turns for context. If the question can't be answered from what you were given, say so and say what's missing — don't guess a file or a connection.
+
+${HONESTY}
+
+${FORMAT}`;
 
 export function explainFileMessage(input: FileInput, source: string): string {
   return [
@@ -119,6 +138,14 @@ export function explainFolderMessage(input: FolderInput): string {
     `Imports from it to outside (${input.outgoing.length}):`,
     ...(input.outgoing.length ? input.outgoing.map((e) => `- ${e.from} → ${e.to}`) : ["- none"]),
   ].join("\n");
+}
+
+export function chatFileMessage(input: FileInput, source: string, question: string): string {
+  return `${explainFileMessage(input, source)}\n\nQuestion:\n${question}`;
+}
+
+export function chatFolderMessage(input: FolderInput, question: string): string {
+  return `${explainFolderMessage(input)}\n\nQuestion:\n${question}`;
 }
 
 export function classifyMessage(input: ClassifyInput, excerpt: string): string {

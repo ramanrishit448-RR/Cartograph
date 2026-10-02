@@ -2,7 +2,8 @@
 
 import { createHash } from "node:crypto";
 import { tracingStatus, type TracingStatus } from "@/lib/ai/client";
-import { classifyFile, explainFile, explainFolder, type Cache } from "@/lib/ai/tasks";
+import type { ChatTurn } from "@/lib/ai/prompts";
+import { chatFile, chatFolder, classifyFile, explainFile, explainFolder, type Cache } from "@/lib/ai/tasks";
 import { loadFileInput, loadFolderInput } from "@/lib/analysis/context";
 import { fetchFileAt, resolveHeadCommit } from "@/lib/pipeline/github";
 import type { ModelRole } from "@/lib/roles";
@@ -23,8 +24,19 @@ export type ExplainResult =
     }
   | { ok: false; error: string };
 
+export type ChatLookups =
+  | { kind: "file"; path: string; sourceRead: boolean; imports: string[]; importedBy: string[] }
+  | { kind: "folder"; dir: string; files: string[]; incoming: { from: string; to: string }[]; outgoing: { from: string; to: string }[] };
+
+export type ChatResult =
+  | { ok: true; body: string; model: string; cached: boolean; tracing: TracingStatus; lookups: ChatLookups }
+  | { ok: false; error: string };
+
 export type HeadResult = { ok: true; head: string; analysed: string } | { ok: false; error: string };
 export type FileAtHead = { ok: true; state: "unchanged" | "changed" | "deleted" } | { ok: false; error: string };
+
+const MAX_QUESTION = 4_000;
+const MAX_HISTORY = 20;
 
 type Db = Awaited<ReturnType<typeof createServerSupabase>>;
 type Analysis = { id: string; organizationId: string; commitSha: string; repository: { owner: string; name: string } };
@@ -60,6 +72,63 @@ export async function explainFileAction(analysisId: string, path: string): Promi
     return { ok: true, ...answer, tracing: tracingStatus(), labelled, labelError };
   } catch (error) {
     console.error(`Explaining ${path} failed:`, error);
+    return { ok: false, error: messageOf(error) };
+  }
+}
+
+export async function chatFileAction(analysisId: string, path: string, question: string, history: ChatTurn[]): Promise<ChatResult> {
+  try {
+    const asked = readQuestion(question);
+    const prior = readHistory(history);
+    const db = await createServerSupabase();
+    const analysis = await readAnalysis(db, analysisId);
+    const loaded = await loadFileInput(db, analysis.id, path);
+    if (!loaded) return { ok: false, error: `${path} isn't a file in this analysis` };
+    const answer = await chatFile(loaded.input, prior, asked, {
+      cache: cacheFor(db, analysis.organizationId),
+      source: sourceAtAnalysedCommit(analysis, path, loaded.file.hash),
+    });
+    return {
+      ok: true,
+      ...answer,
+      tracing: tracingStatus(),
+      lookups: {
+        kind: "file",
+        path: loaded.input.path,
+        sourceRead: !answer.cached,
+        imports: loaded.input.imports.map((n) => n.path),
+        importedBy: loaded.input.importedBy.map((n) => n.path),
+      },
+    };
+  } catch (error) {
+    console.error(`Asking about ${path} failed:`, error);
+    return { ok: false, error: messageOf(error) };
+  }
+}
+
+export async function chatFolderAction(analysisId: string, dir: string, question: string, history: ChatTurn[]): Promise<ChatResult> {
+  try {
+    const asked = readQuestion(question);
+    const prior = readHistory(history);
+    const db = await createServerSupabase();
+    const analysis = await readAnalysis(db, analysisId);
+    const input = await loadFolderInput(db, analysis.id, dir);
+    if (!input) return { ok: false, error: `${dir} isn't a folder on this map` };
+    const answer = await chatFolder(input, prior, asked, { cache: cacheFor(db, analysis.organizationId) });
+    return {
+      ok: true,
+      ...answer,
+      tracing: tracingStatus(),
+      lookups: {
+        kind: "folder",
+        dir: input.dir,
+        files: input.files.map((f) => f.path),
+        incoming: input.incoming,
+        outgoing: input.outgoing,
+      },
+    };
+  } catch (error) {
+    console.error(`Asking about folder ${dir} failed:`, error);
     return { ok: false, error: messageOf(error) };
   }
 }
@@ -170,6 +239,24 @@ function sourceAtAnalysedCommit(analysis: Analysis, path: string, hash: string):
 
 function sha256(bytes: Buffer): string {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+function readQuestion(question: string): string {
+  const asked = question.trim();
+  if (!asked) throw new Error("Type a question first");
+  if (asked.length > MAX_QUESTION) throw new Error(`Questions have to be under ${MAX_QUESTION} characters`);
+  return asked;
+}
+
+function readHistory(history: ChatTurn[]): ChatTurn[] {
+  if (!Array.isArray(history)) throw new Error("The prior turns weren't a list");
+  const prior: ChatTurn[] = [];
+  for (const turn of history.slice(-MAX_HISTORY)) {
+    if (turn.role !== "user" && turn.role !== "assistant") throw new Error("A prior turn had a role that isn't user or assistant");
+    if (typeof turn.content !== "string" || !turn.content.trim()) throw new Error("A prior turn had no text");
+    prior.push({ role: turn.role, content: turn.content });
+  }
+  return prior;
 }
 
 function messageOf(error: unknown): string {

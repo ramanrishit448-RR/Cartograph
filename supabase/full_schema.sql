@@ -473,7 +473,7 @@ create table public.ai_cache (
   id uuid primary key default gen_random_uuid(),
   organization_id text not null references public.organizations (id) on delete cascade,
   key text not null,
-  task text not null check (task in ('explain-file', 'explain-folder', 'classify-file')),
+  task text not null check (task in ('explain-file', 'explain-folder', 'classify-file', 'chat-file', 'chat-folder')),
   model text not null,
   body text not null,
   created_at timestamptz not null default now(),

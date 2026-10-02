@@ -3,13 +3,18 @@ import { isModelRole, MODEL_ROLES, type ModelRole } from "../roles.ts";
 import { traceable } from "langsmith/traceable";
 import { ai, MODELS, traceConfig } from "./client.ts";
 import {
+  CHAT_FILE_SYSTEM,
+  CHAT_FOLDER_SYSTEM,
   CLASSIFY_SYSTEM,
   classifyMessage,
+  chatFileMessage,
+  chatFolderMessage,
   EXPLAIN_FILE_SYSTEM,
   EXPLAIN_FOLDER_SYSTEM,
   explainFileMessage,
   explainFolderMessage,
   PROMPT_VERSION,
+  type ChatTurn,
   type ClassifyInput,
   type FileInput,
   type FolderInput,
@@ -19,7 +24,7 @@ import {
 // inside the traced function, so a hit is still a recorded run, one with no
 // model call in it, and a broken cache is visible as a trace full of calls.
 
-export type Task = "explain-file" | "explain-folder" | "classify-file";
+export type Task = "explain-file" | "explain-folder" | "classify-file" | "chat-file" | "chat-folder";
 
 export type Cache = {
   read: (key: string) => Promise<string | null>;
@@ -51,6 +56,37 @@ export async function explainFile(input: FileInput, deps: { cache: Cache; source
     return { body, model, cached: false };
   }, traceConfig("explain-file"));
   return run(input);
+}
+
+export async function chatFile(
+  input: FileInput,
+  history: ChatTurn[],
+  question: string,
+  deps: { cache: Cache; source: SourceOf },
+): Promise<Explanation> {
+  const model = MODELS.chat;
+  const run = traceable(async (asked: { input: FileInput; history: ChatTurn[]; question: string }): Promise<Explanation> => {
+    const key = cacheKey("chat-file", model, asked);
+    const hit = await deps.cache.read(key);
+    if (hit !== null) return { body: hit, model, cached: true };
+    const body = await complete(model, CHAT_FILE_SYSTEM, chatFileMessage(asked.input, capped(await deps.source()), asked.question), asked.history);
+    await deps.cache.write({ key, task: "chat-file", model, body });
+    return { body, model, cached: false };
+  }, traceConfig("chat-file"));
+  return run({ input, history, question });
+}
+
+export async function chatFolder(input: FolderInput, history: ChatTurn[], question: string, deps: { cache: Cache }): Promise<Explanation> {
+  const model = MODELS.chat;
+  const run = traceable(async (asked: { input: FolderInput; history: ChatTurn[]; question: string }): Promise<Explanation> => {
+    const key = cacheKey("chat-folder", model, asked);
+    const hit = await deps.cache.read(key);
+    if (hit !== null) return { body: hit, model, cached: true };
+    const body = await complete(model, CHAT_FOLDER_SYSTEM, chatFolderMessage(asked.input, asked.question), asked.history);
+    await deps.cache.write({ key, task: "chat-folder", model, body });
+    return { body, model, cached: false };
+  }, traceConfig("chat-folder"));
+  return run({ input, history, question });
 }
 
 export async function explainFolder(input: FolderInput, deps: { cache: Cache }): Promise<Explanation> {
@@ -122,13 +158,10 @@ function readRole(content: string | null): string {
   return role;
 }
 
-async function complete(model: string, system: string, user: string): Promise<string> {
+async function complete(model: string, system: string, user: string, history: ChatTurn[] = []): Promise<string> {
   const response = await ai().chat.completions.create({
     model,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
+    messages: [{ role: "system", content: system }, ...history, { role: "user", content: user }],
   });
   const body = response.choices[0]?.message.content?.trim();
   if (!body) throw new Error(`${model} returned an empty answer (finish reason: ${response.choices[0]?.finish_reason ?? "none"})`);

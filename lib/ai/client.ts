@@ -10,6 +10,7 @@ import { wrapOpenAI } from "langsmith/wrappers/openai";
 export const MODELS = {
   explain: "gemini-flash-lite-latest",
   classify: "gemini-flash-lite-latest",
+  chat: "gemini-flash-lite-latest",
 } as const;
 
 export type TracingStatus = { on: true; project: string } | { on: false; reason: string };

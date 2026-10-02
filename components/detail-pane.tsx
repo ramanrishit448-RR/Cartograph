@@ -11,6 +11,7 @@ import { groupFan, groupId } from "@/lib/graph/view";
 import type { Edge, ParsedFile, Project } from "@/lib/parser/types";
 import { railLabel, UNCLASSIFIED, type ModelRole } from "@/lib/roles";
 import { ExplanationPanel, targetKey, type ExplainTarget, type ExplanationState, type Freshness } from "./explanation-panel";
+import type { ChatState } from "./file-chat";
 import { CategorySwatch } from "./map/swatch";
 
 export type Tab = "structure" | "explanation";
@@ -48,6 +49,8 @@ type Props = {
   explanations: ReadonlyMap<string, ExplanationState>;
   freshness: ReadonlyMap<string, Freshness>;
   onExplain: (target: ExplainTarget) => void;
+  chats: ReadonlyMap<string, ChatState>;
+  onAsk: (target: ExplainTarget, question: string) => void;
 };
 
 export function DetailPane(props: Props) {
@@ -76,6 +79,8 @@ export function DetailPane(props: Props) {
       state={props.explanations.get(targetKey(target))}
       freshness={props.freshness.get(targetKey(target))}
       onExplain={props.onExplain}
+      chat={props.chats.get(targetKey(target))}
+      onAsk={props.onAsk}
       isPath={(p) => byPath.has(p)}
       renderPath={(p) => <InlinePath path={p} paths={paths} />}
     />

@@ -2,6 +2,8 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
+  chatFileAction,
+  chatFolderAction,
   explainFileAction,
   explainFolderAction,
   fileAtHeadAction,
@@ -17,6 +19,7 @@ import type { ModelRole } from "@/lib/roles";
 import { CategoryRail } from "./category-rail";
 import { DetailPane, type RepositoryFacts, type Tab } from "./detail-pane";
 import { targetKey, type ExplainTarget, type ExplanationState, type Freshness } from "./explanation-panel";
+import { toChatTurns, type ChatState } from "./file-chat";
 import { DependencyMap } from "./map/dependency-map";
 import { RouteTable } from "./route-table";
 import { Shell } from "./shell";
@@ -25,7 +28,7 @@ import { Shell } from "./shell";
 // what's selected, what's hovered, which category is picked, and what the pane
 // has open. Everything either side
 // shows is derived from the parse output already in the browser, so nothing
-// here makes a request except the one Explain asks for.
+// here makes a request except Explain and the chat.
 export function AnalysisView({
   files,
   edges,
@@ -65,6 +68,9 @@ export function AnalysisView({
   // selection away and back finds the answer still there without asking again.
   const [explanations, setExplanations] = useState<ReadonlyMap<string, ExplanationState>>(() => new Map());
   const [freshness, setFreshness] = useState<ReadonlyMap<string, Freshness>>(() => new Map());
+  const [chats, setChats] = useState<ReadonlyMap<string, ChatState>>(() => new Map());
+  const chatsRef = useRef(chats);
+  chatsRef.current = chats;
   const [modelRoles, setModelRoles] = useState<ReadonlyMap<string, ModelRole>>(() => new Map(Object.entries(storedModelRoles)));
   // The repository's latest commit, asked for once per page load: GitHub's
   // unauthenticated API allows few requests, and one answer serves every file.
@@ -99,6 +105,41 @@ export function AnalysisView({
           state = file.ok ? { status: "moved", head: latest.head, file: file.state } : { status: "unknown", error: file.error };
         }
         setFreshness((prev) => new Map(prev).set(key, state));
+      })();
+    },
+    [analysisId],
+  );
+
+  const ask = useCallback(
+    (target: ExplainTarget, question: string) => {
+      const key = targetKey(target);
+      const cur = chatsRef.current.get(key) ?? { messages: [], pending: false };
+      if (cur.pending) return;
+      const history = toChatTurns(cur.messages);
+      setChats((prev) => new Map(prev).set(key, { messages: [...cur.messages, { kind: "user", text: question }], pending: true }));
+      void (async () => {
+        const result =
+          target.kind === "file"
+            ? await chatFileAction(analysisId, target.path, question, history)
+            : await chatFolderAction(analysisId, target.dir, question, history);
+        setChats((prev) => {
+          const open = prev.get(key);
+          if (!open) return prev;
+          const messages = [...open.messages];
+          if (result.ok) {
+            messages.push({
+              kind: "assistant",
+              text: result.body,
+              lookups: result.lookups,
+              model: result.model,
+              cached: result.cached,
+              tracing: result.tracing,
+            });
+          } else {
+            messages.push({ kind: "error", error: result.error });
+          }
+          return new Map(prev).set(key, { messages, pending: false });
+        });
       })();
     },
     [analysisId],
@@ -237,6 +278,8 @@ export function AnalysisView({
           explanations={explanations}
           freshness={freshness}
           onExplain={explain}
+          chats={chats}
+          onAsk={ask}
         />
       }
     />
