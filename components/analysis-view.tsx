@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   chatFileAction,
   chatFolderAction,
@@ -70,7 +70,9 @@ export function AnalysisView({
   const [freshness, setFreshness] = useState<ReadonlyMap<string, Freshness>>(() => new Map());
   const [chats, setChats] = useState<ReadonlyMap<string, ChatState>>(() => new Map());
   const chatsRef = useRef(chats);
-  chatsRef.current = chats;
+  useEffect(() => {
+    chatsRef.current = chats;
+  }, [chats]);
   const [modelRoles, setModelRoles] = useState<ReadonlyMap<string, ModelRole>>(() => new Map(Object.entries(storedModelRoles)));
   // The repository's latest commit, asked for once per page load: GitHub's
   // unauthenticated API allows few requests, and one answer serves every file.

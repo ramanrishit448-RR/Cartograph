@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import type { ExplainResult } from "@/app/(workspace)/analyses/[id]/actions";
 import { railLabel } from "@/lib/roles";
-import { FileChat, type ChatState } from "./file-chat";
 import { ExplanationText } from "./explanation-text";
 import { RerunButton } from "./progress/rerun-button";
 
@@ -34,16 +33,11 @@ export function ExplanationPanel(props: {
   state: ExplanationState | undefined;
   freshness: Freshness | undefined;
   onExplain: (target: ExplainTarget) => void;
-  chat: ChatState | undefined;
-  onAsk: (target: ExplainTarget, question: string) => void;
   isPath: (path: string) => boolean;
   renderPath: (path: string) => ReactNode;
 }) {
   const { target, state } = props;
   const what = target.kind === "file" ? "this file" : "this folder";
-  const chat = (
-    <FileChat target={target} state={props.chat} onAsk={props.onAsk} isPath={props.isPath} renderPath={props.renderPath} />
-  );
 
   if (!state) {
     return (
@@ -56,7 +50,6 @@ export function ExplanationPanel(props: {
               : "Written by a model from what's in this folder and every import crossing into or out of it, as parsed."}
           </p>
         </div>
-        {chat}
       </div>
     );
   }
@@ -64,7 +57,6 @@ export function ExplanationPanel(props: {
     return (
       <div className="py-3">
         <p className="px-3 text-[11px] text-fg-muted">Explaining {what}…</p>
-        {chat}
       </div>
     );
   }
@@ -78,7 +70,6 @@ export function ExplanationPanel(props: {
             <ExplainButton label="Try again" onClick={() => props.onExplain(target)} />
           </div>
         </div>
-        {chat}
       </div>
     );
   }
@@ -104,7 +95,6 @@ export function ExplanationPanel(props: {
           <p>{result.tracing.on ? `Traced to LangSmith project ${result.tracing.project}` : `Not traced: ${result.tracing.reason}`}</p>
         </div>
       </div>
-      {chat}
     </div>
   );
 }

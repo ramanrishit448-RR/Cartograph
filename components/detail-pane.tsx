@@ -11,7 +11,7 @@ import { groupFan, groupId } from "@/lib/graph/view";
 import type { Edge, ParsedFile, Project } from "@/lib/parser/types";
 import { railLabel, UNCLASSIFIED, type ModelRole } from "@/lib/roles";
 import { ExplanationPanel, targetKey, type ExplainTarget, type ExplanationState, type Freshness } from "./explanation-panel";
-import type { ChatState } from "./file-chat";
+import { FileChat, type ChatState } from "./file-chat";
 import { CategorySwatch } from "./map/swatch";
 
 export type Tab = "structure" | "explanation";
@@ -71,31 +71,47 @@ export function DetailPane(props: Props) {
 
   // Only a path that is a parsed file on this map becomes a link; anything
   // else the model wrote stays text.
-  const explanation = (target: ExplainTarget) => (
-    <ExplanationPanel
-      target={target}
-      analysisId={props.analysisId}
-      commitSha={props.commitSha}
-      state={props.explanations.get(targetKey(target))}
-      freshness={props.freshness.get(targetKey(target))}
-      onExplain={props.onExplain}
-      chat={props.chats.get(targetKey(target))}
-      onAsk={props.onAsk}
-      isPath={(p) => byPath.has(p)}
-      renderPath={(p) => <InlinePath path={p} paths={paths} />}
-    />
-  );
+  const paneFor = (target: ExplainTarget) => {
+    const isPath = (p: string) => byPath.has(p);
+    const renderPath = (p: string) => <InlinePath path={p} paths={paths} />;
+    return {
+      explanation: (
+        <ExplanationPanel
+          target={target}
+          analysisId={props.analysisId}
+          commitSha={props.commitSha}
+          state={props.explanations.get(targetKey(target))}
+          freshness={props.freshness.get(targetKey(target))}
+          onExplain={props.onExplain}
+          isPath={isPath}
+          renderPath={renderPath}
+        />
+      ),
+      chat: (
+        <FileChat
+          key={targetKey(target)}
+          target={target}
+          state={props.chats.get(targetKey(target))}
+          onAsk={props.onAsk}
+          isPath={isPath}
+          renderPath={renderPath}
+        />
+      ),
+    };
+  };
 
   if (selection.kind === "file") {
     const file = byPath.get(selection.path);
     if (!file) return null;
+    const pane = paneFor({ kind: "file", path: file.path });
     return (
       <Selected
         title={<PathTitle path={file.path} paths={paths} />}
         caption="file"
         tab={props.tab}
         onTab={props.onTab}
-        explanation={explanation({ kind: "file", path: file.path })}
+        explanation={pane.explanation}
+        chat={pane.chat}
       >
         <FileStructure
           file={file}
@@ -112,13 +128,15 @@ export function DetailPane(props: Props) {
 
   const group = folding.groups.find((g) => groupId(g.dir) === selection.id);
   if (!group) return null;
+  const pane = paneFor({ kind: "group", dir: group.dir });
   return (
     <Selected
       title={<span className="font-mono text-[12px] break-all">{group.dir === "." ? "(root)" : `${group.dir}/`}</span>}
       caption="folder"
       tab={props.tab}
       onTab={props.onTab}
-      explanation={explanation({ kind: "group", dir: group.dir })}
+      explanation={pane.explanation}
+      chat={pane.chat}
     >
       <GroupStructure files={group.files} fan={groupFanOf(folding, props.edges, group.dir)} />
     </Selected>
@@ -376,6 +394,7 @@ function Selected(props: {
   tab: Tab;
   onTab: (tab: Tab) => void;
   explanation: ReactNode;
+  chat: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -389,6 +408,7 @@ function Selected(props: {
         </div>
       </header>
       {props.tab === "structure" ? props.children : props.explanation}
+      {props.chat}
     </div>
   );
 }
