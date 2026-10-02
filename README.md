@@ -1,4 +1,8 @@
+<div align="center">
+  <img src="Screenshot 2026-10-03 001440.png" alt="LLM Arena Hero Banner" width="100%" />
+  
 # Cartograph
+</div>
 
 A local app that reads a public GitHub repository and draws it as a dependency map. Everything on screen comes from really parsing the code. The AI explains what the parser found; it never decides what is there.
 
