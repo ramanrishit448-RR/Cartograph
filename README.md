@@ -1,124 +1,124 @@
 <div align="center">
-  <img src="Screenshot 2026-10-03 001440.png" alt="LLM Arena Hero Banner" width="100%" />
-  
+  <img src="Screenshot 2026-10-03 001440.png" alt="Cartograph Hero Banner" width="100%" />
+
 # Cartograph
 </div>
 
-A local app that reads a public GitHub repository and draws it as a dependency map. Everything on screen comes from really parsing the code. The AI explains what the parser found; it never decides what is there.
+A local application that parses public GitHub repositories and visualizes them as interactive dependency maps. Every visual element on screen originates from actual code parsing. The AI interprets parser output; it never fabricates connections.
 
 ```
-Sign in → paste a public TS/JS repo URL → parse imports into a graph → map, structure, explanation, and a chat pinned to the selection
+Sign in → paste a public TypeScript/JavaScript repo URL → parse imports into a graph → map, structure, explanation, and selection-scoped chat
 ```
 
 ## Table of contents
 
 1. [Overview](#overview)
-2. [Why this platform](#why-this-platform)
-3. [What it is (and is not)](#what-it-is-and-is-not)
+2. [Why this exists](#why-this-exists)
+3. [Scope](#scope)
 4. [Tech stack](#tech-stack)
-5. [System structure](#system-structure)
-6. [System architecture](#system-architecture)
-7. [Project structure](#project-structure)
-8. [Overall setup](#overall-setup)
+5. [System layers](#system-layers)
+6. [Architecture](#architecture)
+7. [Project layout](#project-layout)
+8. [Setup](#setup)
 9. [Getting started](#getting-started)
-10. [Local execution](#local-execution)
-11. [How an analysis runs](#how-an-analysis-runs)
-12. [Rules that must stay true](#rules-that-must-stay-true)
+10. [Commands](#commands)
+11. [Analysis flow](#analysis-flow)
+12. [Core principles](#core-principles)
 
 ---
 
 ## Overview
 
-Cartograph is for a developer opening a TypeScript or JavaScript codebase they did not fully read — often one they built themselves with an agent, across many sessions, and can no longer hold in their head. They can read code. What they cannot see is its shape.
+Cartograph serves developers opening TypeScript or JavaScript codebases they haven't fully read—often ones they built with AI assistance across many sessions and can no longer mentally navigate. They can read individual files. What they cannot see is the overall structure.
 
-You sign in, belong to an organization, paste a **public** GitHub URL, and get:
+Sign in, belong to an organization, paste a **public** GitHub URL, and get:
 
-- Folders as boxes and imports as lines
-- A file’s real imports and importers
-- Blast radius and dependency chain as arithmetic over those edges
-- An explanation written from that file (or folder) and its parsed neighbours
-- A chat on the same selection, with a lookup list before every answer
+- Folders as collapsible boxes, imports as connecting lines
+- A file's actual imports and importers
+- Blast radius and dependency chain calculated from edges
+- An explanation written from that file (or folder) and its parsed neighbors
+- A chat interface on the current selection, with a lookup list before every answer
 
-An analysis belongs to the organization, not to whoever happened to click submit. The repository is mapped once; everyone in that org starts from the map.
+An analysis belongs to the organization, not to whoever submitted it. The repository is mapped once; everyone in that org starts from the same map.
 
-The full product reasoning lives in [`docs/project-doc.md`](docs/project-doc.md). Behaviour for each slice of work lives in [`docs/specs/`](docs/specs/). This README is how the running system is put together.
-
----
-
-## Why this platform
-
-Codebases now routinely contain code nobody on the team has read. An agent wrote it, someone confirmed it worked, it shipped. That accumulates structure nobody chose: re-export chains, a utility forty files depend on, a module nothing has referenced in months.
-
-The questions that follow are structural. What is this file? What depends on it? What breaks if it changes? Answering them by reading imports one file at a time stops working around thirty files and stops being attempted past a hundred.
-
-Codebase visualisation has failed before (CodeSee, Sourcetrail) because it sold a map of a codebase the user had already read. A map you could have drawn yourself is a nice-to-have. What changed is that people now ship code they have never read, which turns the same artifact into something needed on a specific afternoon.
-
-Most AI “codebase understanding” tools do the opposite of this product: hand the repository to a model and let it describe the structure. That is faster to build. It is also how invented edges get into the picture. Cartograph exists so the graph is a parse, and the model is a narrator of that parse.
-
-The rule everything rests on:
-
-**Every box and every line comes from really parsing the code.** The AI may explain and label. It may never decide that two files are connected, and it may never walk the graph when arithmetic can do it instead.
-
-A graph that is ninety percent right is worse than no graph, because there is no way to tell which ten percent is wrong.
+Product rationale lives in [`docs/project-doc.md`](docs/project-doc.md). Phase-by-phase behavior lives in [`docs/specs/`](docs/specs/). This README covers how the running system is assembled.
 
 ---
 
-## What it is (and is not)
+## Why this exists
+
+Codebases now routinely contain code nobody on the team has read. An agent wrote it, someone verified it worked, it shipped. This accumulates structure nobody designed: re-export chains, a utility forty files import, a module nothing has referenced in months.
+
+The questions that follow are structural. What is this file? What depends on it? What breaks if it changes? Reading imports file-by-file stops working around thirty files and stops being attempted past a hundred.
+
+Codebase visualization has failed before because it sold a map of a codebase the user had already read. A map you could have drawn yourself is optional. What changed is that people now ship code they have never read, making that same artifact essential on particular days.
+
+Most AI "codebase understanding" tools do the opposite: hand the repository to a model and let it describe the structure. That's faster to build. It's also how invented edges enter the picture. Cartograph exists so the graph is a parse, and the model narrates that parse.
+
+The foundational rule:
+
+**Every box and every line comes from really parsing the code.** The AI may explain and label. It may never decide that two files are connected, and it may never walk the graph when arithmetic can answer instead.
+
+A graph that's ninety percent correct is worse than no graph, because there's no way to identify the incorrect ten percent.
+
+---
+
+## Scope
 
 **In scope**
 
 - Sign-in (GitHub, Google, or email) for identity only. No GitHub repo scope, no token storage, public repositories only
-- Organizations: every analysis belongs to one; what you can see follows from which org you are in
+- Organizations: every analysis belongs to one; visibility follows org membership
 - Parsing TypeScript and JavaScript: imports, re-exports, dynamic imports, and `require()`
-- Framework knowledge as adapters (Next.js, NestJS, Express, Docusaurus, React, then a fallback) — never as `if (framework === …)` inside the parser
+- Framework knowledge via adapters (Next.js, NestJS, Express, Docusaurus, React, then fallback)—never as `if (framework === …)` inside the parser
 - The map, detail pane (Structure + Explanation), blast radius, dependency chain, insights, route table
-- File and folder explanation, model labelling when convention cannot identify a file
+- File and folder explanation, model labeling when convention cannot identify a file
 - Selection-scoped chat, with lookups listed before the answer
 - Coverage: what was parsed, what was skipped, and why
 - Live progress while a repository is fetched and parsed
 - Cached, traced AI calls
 
-**Out of scope (on purpose)**
+**Out of scope (by design)**
 
-- Scores, grades, severity, “issues found” — this explains a codebase, it does not review one
+- Scores, grades, severity, "issues found"—this explains a codebase, it does not review one
 - Letting the model pick a starting point and walk the graph
 - Private repositories (would require storing a token)
 - Approximate routes: if method and full path cannot both be recovered from syntax, show none
 - Languages other than TypeScript and JavaScript
-- A separate queue, worker, or container fleet — one Next.js app
+- A separate queue, worker, or container fleet—one Next.js app
 
-The chat on a file or folder is **not** a repo-wide agent. It is handed the selected path, its source (for a file), and the neighbours the parser already stored. An answer with nothing listed as looked up is the failure this product exists to prevent.
+The chat on a file or folder is **not** a repo-wide agent. It receives the selected path, its source (for a file), and the neighbors the parser already stored. An answer with nothing listed as looked up is the failure this product exists to prevent.
 
 ---
 
 ## Tech stack
 
-| Layer           | Choice                                               | Why it is here                                                                                                |
+| Layer           | Choice                                               | Why                                                                                                           |
 | --------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| App             | Next.js 16 App Router, React 19                      | One deployable. Pages, Server Actions, and the pipeline live in the same process.                             |
-| Language        | TypeScript, strict                                   | The parser and the UI share types; `any` is refused.                                                          |
+| App             | Next.js 16 App Router, React 19                      | Single deployable. Pages, Server Actions, and the pipeline in one process.                                    |
+| Language        | TypeScript, strict                                   | Parser and UI share types; `any` is prohibited.                                                               |
 | Parse           | ts-morph (TypeScript compiler API)                   | Imports become edges from syntax, not from a model.                                                           |
 | Map             | React Flow (`@xyflow/react`) + dagre                 | Layout is a calculation over files and edges.                                                                 |
-| Identity        | Clerk (organizations)                                | The session token carries the org. Application code does not ask Clerk who may see a row.                     |
-| Data            | Supabase Postgres + RLS + Realtime                   | Rows belong to an organization. Policies decide who may read them. Progress is a subscription, not a poll.    |
-| AI              | OpenAI SDK pointed at Gemini’s OpenAI-compatible API | One wrapped client in `lib/ai/client.ts`. Nothing else constructs an SDK client.                              |
-| Observability   | LangSmith                                            | Every AI task is traced. The cache read sits inside the trace, so a hit is a recorded run with no model call. |
+| Identity        | Clerk (organizations)                                | Session token carries the org. Application code does not query Clerk for permissions.                         |
+| Data            | Supabase Postgres + RLS + Realtime                   | Rows belong to an organization. Policies determine read access. Progress is a subscription, not a poll.       |
+| AI              | OpenAI SDK pointed at Gemini's OpenAI-compatible API | One wrapped client in `lib/ai/client.ts`. Nothing else constructs an SDK client.                              |
+| Observability   | LangSmith                                            | Every AI task is traced. Cache reads sit inside traces, so a hit is a recorded run with no model call.        |
 | UI              | Tailwind CSS v4                                      | Dense developer tool: small type, tight spacing, monospace paths.                                             |
 | Package manager | pnpm (`packageManager` in `package.json`)            | Workspace scripts and installs.                                                                               |
 
-Gemini is reached with `GEMINI_API_KEY` (or `OPENAI_API_KEY` as a fallback name) against `https://generativelanguage.googleapis.com/v1beta/openai/`. Models are pinned in `lib/ai/client.ts` (`gemini-flash-lite-latest` for explain, classify, and chat). Do not install a second AI SDK.
+Gemini is reached via `GEMINI_API_KEY` (or `OPENAI_API_KEY` as fallback) against `https://generativelanguage.googleapis.com/v1beta/openai/`. Models are pinned in `lib/ai/client.ts` (`gemini-flash-lite-latest` for explain, classify, and chat). Do not install a second AI SDK.
 
 ---
 
-## System structure
+## System layers
 
-Four layers, with a hard wall between them.
+Four layers, strictly separated.
 
 ### 1. Parser (`lib/parser`)
 
-Path in, data out. Walks the tree, extracts imports and exports, resolves specifiers to real files, runs framework adapters, reports coverage.
+Path in, data out. Walks the tree, extracts imports and exports, resolves specifiers to actual files, runs framework adapters, reports coverage.
 
-It must not import Next, React, or the database client. It must run from `node scripts/parse.ts` with nothing else up. Framework knowledge lives in adapters, not in the walker.
+It must not import Next, React, or the database client. It must run from `node scripts/parse.ts` with nothing else running. Framework knowledge lives in adapters, not in the walker.
 
 ### 2. Pipeline (`lib/pipeline`)
 
@@ -126,11 +126,11 @@ Owns the analysis job: claim a queued row, resolve the GitHub HEAD commit, downl
 
 ### 3. Graph (`lib/graph`)
 
-Pure functions over a file list and an edge list already in the browser: folding folders, highlighting, blast radius, insights, neighbour lists. No fetching inside these functions. If an answer is arithmetic, it is instant — no spinner.
+Pure functions over a file list and an edge list already in the browser: folding folders, highlighting, blast radius, insights, neighbor lists. No fetching inside these functions. If an answer is arithmetic, it's instant—no spinner.
 
 ### 4. Workspace UI + server actions
 
-The signed-in app: dashboard, map, detail pane, explanation, chat. Database access happens in server code (`app/…/actions.ts`, `lib/analysis`, `lib/pipeline/store.ts`), never inside components. Who may read a row is a Postgres policy, not a `where organization_id =` the app remembered to add.
+The signed-in app: dashboard, map, detail pane, explanation, chat. Database access happens in server code (`app/…/actions.ts`, `lib/analysis`, `lib/pipeline/store.ts`), never inside components. Who may read a row is a Postgres policy, not a `where organization_id =` clause the app remembered to add.
 
 AI tasks (`lib/ai/tasks.ts`) always: trace → cache read → on miss, fetch source if needed → model → cache write.
 
@@ -150,7 +150,7 @@ Workspace server (Clerk token → Supabase as the member)
 
 ---
 
-## System architecture
+## Architecture
 
 ### Request and identity
 
@@ -168,7 +168,7 @@ flowchart LR
   WS --> RT[Supabase Realtime]
 ```
 
-Clerk issues the session. Supabase never owns a login here: the server client passes the Clerk JWT as `accessToken`. RLS policies read the organization id from that JWT (`o.id` or `org_id`). Signing in under another org does not hide rows in the UI — those rows are absent from the query.
+Clerk issues the session. Supabase never owns authentication: the server client passes the Clerk JWT as `accessToken`. RLS policies read the organization id from that JWT (`o.id` or `org_id`). Signing in under another org doesn't hide rows in the UI—those rows are absent from the query.
 
 ### Analysis pipeline
 
@@ -214,11 +214,11 @@ flowchart TB
   TASK --> UI[Looked-up paths, then the answer]
 ```
 
-The model is never given a walk it chose. Neighbours are read from stored edges. Chat threads live in React state for the page session; they are not stored as chat rows. Identical question + file/folder + prior turns hits the cache.
+The model is never given a walk it chose. Neighbors are read from stored edges. Chat threads live in React state for the page session; they are not stored as chat rows. Identical question + file/folder + prior turns hits the cache.
 
 ---
 
-## Project structure
+## Project layout
 
 ```
 cartograph-main/
@@ -280,29 +280,29 @@ Rows always carry `organization_id`. Child tables foreign-key `(parent_id, organ
 | `file_roles`    | Convention or model label                                                     |
 | `ai_cache`      | Cached bodies keyed by task + inputs (`explain-*`, `classify-file`, `chat-*`) |
 
-RLS is forced on every new `public` table by an event trigger. Members `SELECT` their org’s rows. Writes for the pipeline and cache use the server secret (`createAdminSupabase`), still stamped with the org the member was allowed to read.
+RLS is enforced on every new `public` table by an event trigger. Members `SELECT` their org's rows. Writes for the pipeline and cache use the server secret (`createAdminSupabase`), still stamped with the org the member was allowed to read.
 
 ---
 
-## Overall setup
+## Setup
 
-You need four external pieces. Cartograph itself is one Node process.
+You need four external services. Cartograph itself is a single Node process.
 
 ### 1. Clerk
 
-- Application with sign-in (GitHub / Google / email is enough)
+- Application with sign-in (GitHub / Google / email)
 - **Organizations enabled**
 - Session token customized so Supabase policies and the dashboard can read the org:
-  - `org_id` (or Clerk’s `o.id` shape — policies accept both)
-  - `"org_name": "{{org.name}}"` — the dashboard throws if this claim is missing
-- JWT template for Supabase if you use Clerk’s Supabase integration; the app passes the session token as `accessToken`
+  - `org_id` (or Clerk's `o.id` shape—policies accept both)
+  - `"org_name": "{{org.name}}"`—the dashboard throws if this claim is missing
+- JWT template for Supabase if you use Clerk's Supabase integration; the app passes the session token as `accessToken`
 
 ### 2. Supabase
 
 - A project
 - Apply every file in `supabase/migrations/` (SQL editor or `supabase db push` after `supabase link`)
-- Include `20261002182212_chat_cache_tasks.sql` — without it, chat writes fail `ai_cache_task_check`
-- After schema changes, regenerate `lib/supabase/database.types.ts` from the live schema rather than editing it by hand
+- Include `20261002182212_chat_cache_tasks.sql`—without it, chat writes fail `ai_cache_task_check`
+- After schema changes, regenerate `lib/supabase/database.types.ts` from the live schema rather than editing by hand
 
 ### 3. Gemini
 
@@ -316,7 +316,7 @@ You need four external pieces. Cartograph itself is one Node process.
 - `LANGSMITH_PROJECT=cartograph` (or another name)
 - If tracing is off, every explanation still reports why (`LANGSMITH_TRACING isn't "true"`, or the key is missing)
 
-GitHub is unauthenticated public API only. Large or heavily fetched repos can hit rate limits; that is a stated limit, not a token to store.
+GitHub is unauthenticated public API only. Large or heavily fetched repos can hit rate limits; that's a stated limit, not a token to store.
 
 ---
 
@@ -334,7 +334,7 @@ GitHub is unauthenticated public API only. Large or heavily fetched repos can hi
 ```bash
 git clone <this-repo-url>
 cd cartograph-main
-npm install
+pnpm install
 ```
 
 **Environment**
@@ -374,14 +374,14 @@ Apply `supabase/migrations/` to the project those URLs point at. Confirm `ai_cac
 **Run**
 
 ```bash
-npm dev
+pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Sign in, create or join an organization if prompted, paste a public repo such as `vercel/next.js` only if you accept a long parse — start with a small public TypeScript repo.
+Open [http://localhost:3000](http://localhost:3000). Sign in, create or join an organization if prompted, paste a public repo such as `vercel/next.js` only if you accept a long parse—start with a small public TypeScript repo.
 
 ---
 
-## Local execution
+## Commands
 
 | Command                             | What it does                                            |
 | ----------------------------------- | ------------------------------------------------------- |
@@ -392,19 +392,19 @@ Open [http://localhost:3000](http://localhost:3000). Sign in, create or join an 
 | `pnpm analyze`                      | `scripts/analyze.ts` with `.env.local` loaded           |
 | `pnpm map-counts` / `pnpm insights` | Graph scripts over parse output                         |
 
-The parser package is runnable on its own. If `scripts/parse.ts` cannot parse a directory without the app running, the layering is wrong.
+The parser package is runnable standalone. If `scripts/parse.ts` cannot parse a directory without the app running, the layering is wrong.
 
 ### First-run checklist
 
 1. Sign in → `/start` if you have no org → land on `/`
 2. Submit `owner/name` of a **public** JS/TS repository
 3. Dashboard row moves through fetch / select / parse / store over Realtime
-4. Open the analysis: folders fold, a click selects, Structure lists real neighbours
-5. Explanation writes a paragraph from source + neighbours; paths in the prose are map links
+4. Open the analysis: folders fold, a click selects, Structure lists real neighbors
+5. Explanation writes a paragraph from source + neighbors; paths in the prose are map links
 6. Chat (under Structure and Explanation) lists **Looked up** before the answer
-7. Switch tabs: same thread. Change selection: that selection’s thread. Reload: threads are gone (not stored as rows); identical questions may still be cache hits
+7. Switch tabs: same thread. Change selection: that selection's thread. Reload: threads are gone (not stored as rows); identical questions may still be cache hits
 
-### What “working” looks like for chat
+### What "working" looks like for chat
 
 - First ask: `new answer`, lookup list names this file (or folder files + crossing edges) only
 - Same question, same file, same empty history after a reload: `from cache, no model call`
@@ -413,21 +413,21 @@ The parser package is runnable on its own. If `scripts/parse.ts` cannot parse a 
 
 ---
 
-## How an analysis runs
+## Analysis flow
 
 1. **Submit** — Server action inserts `projects` + `analyses` (`queued`) and starts `runAnalysis`.
 2. **Claim** — The row is claimed so a stale run cannot overwrite a newer one.
 3. **Fetch** — Public GitHub: HEAD SHA, then the commit tarball into a temp directory.
 4. **Select** — Walk for `.ts` / `.tsx` / `.js` / `.jsx` (and related), skip with reasons.
 5. **Parse** — ts-morph extract, resolve to real files, adapters for routes and roles, fan-in / fan-out.
-6. **Store** — Replace that analysis’s files, edges, routes, roles. Coverage JSON on the analysis row.
+6. **Store** — Replace that analysis's files, edges, routes, roles. Coverage JSON on the analysis row.
 7. **Open** — The map page loads the parse once. Fold, highlight, blast radius, and insights are computed in the client. Explain and chat are the only extra requests.
 
 Unresolved imports are reported with a reason. They never become guessed edges.
 
 ---
 
-## Rules that must stay true
+## Core principles
 
 These are also in `CLAUDE.md`. Breaking one is worse than not shipping a feature.
 
@@ -437,7 +437,7 @@ These are also in `CLAUDE.md`. Breaking one is worse than not shipping a feature
 - Do not build ahead of the current phase spec.
 - Do not grade the code.
 - Do not leave the build broken; do not weaken a check to make it pass.
-- Do not read the database on a loop — name columns, limit list reads, subscribe instead of polling.
+- Do not read the database on a loop—name columns, limit list reads, subscribe instead of polling.
 - One place constructs the AI client. Anywhere else silently skips tracing.
 
 Work is spec-driven. Read `docs/project-doc.md` for the part you need and `docs/specs/phase-NN.md` before building that phase. The last git commit that passed is the last finished phase.
