@@ -1,10 +1,16 @@
 <div align="center">
   <img src="Screenshot 2026-10-03 001440.png" alt="Cartograph Hero Banner" width="100%" />
-
-# Cartograph
 </div>
 
-A local application that parses public GitHub repositories and visualizes them as interactive dependency maps. Every visual element on screen originates from actual code parsing. The AI interprets parser output; it never fabricates connections.
+<div align="center">
+
+# Cartograph
+
+*A local application that parses public GitHub repositories and visualizes them as interactive dependency maps.*
+
+**Every visual element on screen originates from actual code parsing. The AI interprets parser output; it never fabricates connections.**
+
+</div>
 
 ```
 Sign in → paste a public TypeScript/JavaScript repo URL → parse imports into a graph → map, structure, explanation, and selection-scoped chat
@@ -92,6 +98,39 @@ The chat on a file or folder is **not** a repo-wide agent. It receives the selec
 ---
 
 ## Tech stack
+
+<div align="center">
+
+### The AI-Powered Codebase Dependency Mapping & Intelligent Analysis Platform
+
+<img src="https://img.shields.io/badge/⚛️_REACT-19.2-61DAFB?style=for-the-badge&logo=react&logoColor=white&labelColor=20232A&color=61DAFB" alt="React 19.2"/>
+<img src="https://img.shields.io/badge/⏭️_NEXT.JS-16-000000?style=for-the-badge&logo=next.js&logoColor=white&labelColor=20232A&color=FFFFFF" alt="Next.js 16"/>
+<img src="https://img.shields.io/badge/📘_TYPESCRIPT-STRICT-3178C6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=20232A&color=3178C6" alt="TypeScript Strict"/>
+<img src="https://img.shields.io/badge/🎨_TAILWIND_CSS-V4.3-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white&labelColor=20232A&color=06B6D4" alt="Tailwind CSS V4.3"/>
+<img src="https://img.shields.io/badge/📦_PNPM-10-F69220?style=for-the-badge&logo=pnpm&logoColor=white&labelColor=20232A&color=F69220" alt="pnpm 10"/>
+
+<img src="https://img.shields.io/badge/🗄️_POSTGRES-SUPABASE-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white&labelColor=20232A&color=3FCF8E" alt="Postgres Supabase"/>
+<img src="https://img.shields.io/badge/🔐_AUTH-CLERK-6C47FF?style=for-the-badge&logo=clerk&logoColor=white&labelColor=20232A&color=6C47FF" alt="Clerk Auth"/>
+<img src="https://img.shields.io/badge/⚡_REALTIME-SUPABASE-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white&labelColor=20232A&color=3ECF8E" alt="Supabase Realtime"/>
+<img src="https://img.shields.io/badge/🔒_RLS-ENABLED-4ADE80?style=for-the-badge&logo=postgresql&logoColor=white&labelColor=20232A&color=4ADE80" alt="Row Level Security"/>
+
+<img src="https://img.shields.io/badge/🔬_PARSE-TS--MORPH-3178C6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=20232A&color=3178C6" alt="ts-morph"/>
+<img src="https://img.shields.io/badge/🗺️_MAP-REACT_FLOW-F7B955?style=for-the-badge&logo=react&logoColor=white&labelColor=20232A&color=F7B955" alt="React Flow"/>
+<img src="https://img.shields.io/badge/📊_LAYOUT-DAGRE-E84855?style=for-the-badge&logo=chartdotjs&logoColor=white&labelColor=20232A&color=E84855" alt="dagre"/>
+<img src="https://img.shields.io/badge/🧩_ADAPTERS-FRAMEWORKS-8B5CF6?style=for-the-badge&logo=framework&logoColor=white&labelColor=20232A&color=8B5CF6" alt="Framework Adapters"/>
+
+<img src="https://img.shields.io/badge/🤖_AI-GEMINI-8B5CF6?style=for-the-badge&logo=google&logoColor=white&labelColor=20232A&color=8B5CF6" alt="Google Gemini"/>
+<img src="https://img.shields.io/badge/🔧_SDK-OPENAI_COMPAT-412991?style=for-the-badge&logo=openai&logoColor=white&labelColor=20232A&color=412991" alt="OpenAI Compatible SDK"/>
+<img src="https://img.shields.io/badge/📈_TRACING-LANGSMITH-1B3A4B?style=for-the-badge&logo=langchain&logoColor=white&labelColor=20232A&color=1B3A4B" alt="LangSmith Tracing"/>
+<img src="https://img.shields.io/badge/💾_CACHE-TRACED-10B981?style=for-the-badge&logo=redis&logoColor=white&labelColor=20232A&color=10B981" alt="Traced Cache"/>
+
+<img src="https://img.shields.io/badge/🐙_GITHUB-PUBLIC_API-24292E?style=for-the-badge&logo=github&logoColor=white&labelColor=20232A&color=24292E" alt="GitHub Public API"/>
+<img src="https://img.shields.io/badge/🏗️_ARCHITECTURE-SINGLE_PROCESS-FF6B6B?style=for-the-badge&logo=vercel&logoColor=white&labelColor=20232A&color=FF6B6B" alt="Single Process Architecture"/>
+<img src="https://img.shields.io/badge/📜_LICENSE-MIT-4ADE80?style=for-the-badge&logo=opensourceinitiative&logoColor=white&labelColor=20232A&color=4ADE80" alt="MIT License"/>
+
+</div>
+
+### Layer Details
 
 | Layer           | Choice                                               | Why                                                                                                           |
 | --------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
